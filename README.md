@@ -16,9 +16,9 @@ Also need python 2.x and jdk 8.
 
 Supported images:
  - boot.img
- - recovery.img
- - recovery-two-step.img
- - vbmeta.img
+ - recovery.img, recovery-two-step.img
+ - vbmeta.img, vbmeta\_system.img, vbmeta\_vendor.img etc.
+ - dtbo.img (only 'unpack' is supported)
 
 (2) These utilities are known to work for Nexus/Pixel boot.img for the following Android releases:
 
