@@ -1,6 +1,20 @@
+// Copyright 2021 yuyezhong@gmail.com
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package cfig.init
 
-import cfig.bootloader_message.BootloaderMsg
+import miscimg.MiscImage
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -12,13 +26,13 @@ class Reboot {
         ANDROID_RB_THERMOFF
     }
 
-    @ExperimentalUnsignedTypes
     companion object {
         private val log = LoggerFactory.getLogger(Reboot::class.java)
         const val dynamicPartitionKey = "ro.boot.dynamic_partitions"
         const val lastRebootReasonKey = "persist.sys.boot.reason"
 
         private fun doReboot(cmd: RB_TYPE, reason: String, rebootTarget: String) {
+            log.info("DoReboot: cmd=$cmd, reason=$reason, tgt=$rebootTarget")
             val reasons = reason.split(",").toTypedArray()
             val props = Properties()
             props.setProperty(lastRebootReasonKey, reason)
@@ -41,7 +55,7 @@ class Reboot {
             val args = inValue.split(",").toTypedArray()
             var cmd: String
             var rebootTarget = ""
-            if (args.size > 3) {
+            if (args.size > 4) {
                 throw java.lang.IllegalArgumentException("powerctl: unrecognized command $args")
             }
             when (args[0]) {
@@ -73,30 +87,37 @@ class Reboot {
                         }
                         when (rebootTarget) {
                             "fastboot" -> {
+                                val bcb: MiscImage.BootloaderMessage
                                 if (bDynamicPartition == null || bDynamicPartition == false) {
                                     log.warn("$dynamicPartitionKey=false, using 'bootloader fastboot' instead of 'fastbootd'")
                                     rebootTarget = "bootloader"
-                                    BootloaderMsg().writeRebootBootloader()
+                                    bcb = MiscImage.BootloaderMessage.rebootBootloader()
+                                    log.info(bcb.toString())
                                 } else {
                                     log.info("$dynamicPartitionKey=true, using fastbootd")
-                                    BootloaderMsg().writeBootloaderMessage(arrayOf("--fastboot"))
+                                    bcb = MiscImage.BootloaderMessage.rebootFastboot2()
                                     rebootTarget = "recovery"
                                 }
+                                log.info(bcb.toString())
                             }
                             "bootloader" -> {
-                                BootloaderMsg().writeRebootBootloader()
+                                val bcb = MiscImage.BootloaderMessage.rebootBootloader()
+                                log.info(bcb.toString())
                             }
                             "sideload", "sideload-auto-reboot" -> {
-                                BootloaderMsg().writeBootloaderMessage(
-                                        arrayOf("--" + rebootTarget.replace("-", "_")))
+                                val bcb = MiscImage.BootloaderMessage().apply {
+                                    updateBootloaderMessageInStruct(arrayOf("--" + rebootTarget.replace("-", "_")))
+                                }
+                                log.info(bcb.toString())
                                 rebootTarget = "recovery"
                             }
                             else -> {
                             }
                         }//end-of-when-rebootTarget
-                        if (args.size == 3 && args[2].isNotBlank()) {
-                            log.info("rebootTarget: append " + args[2])
-                            rebootTarget += ("," + args[2])
+
+                        for (i in 2 until args.size) {
+                            log.info("rebootTarget: append " + args[i])
+                            rebootTarget += ("," + args[i])
                         }
                     }//end-of-cmd
                 }//end-of-cmd=reboot

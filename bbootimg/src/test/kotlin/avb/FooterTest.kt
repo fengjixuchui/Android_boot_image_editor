@@ -1,14 +1,26 @@
+// Copyright 2021 yuyezhong@gmail.com
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package avb
 
+import avb.blob.Footer
 import org.apache.commons.codec.binary.Hex
+import org.junit.Assert.assertEquals
 import org.junit.Test
-
-import org.junit.Assert.*
 import java.io.ByteArrayInputStream
 
-@ExperimentalUnsignedTypes
 class FooterTest {
-
     @Test
     fun readAVBfooter() {
         val footerBytes = this.javaClass.classLoader.getResourceAsStream("taimen.avbfooter").readBytes()
@@ -16,11 +28,11 @@ class FooterTest {
             it.skip(footerBytes.size - 64L)
             val footer = Footer(it)
             println(footer.toString())
-            assertEquals(1U, footer.versionMajor)
-            assertEquals(0U, footer.versionMinor)
-            assertEquals(512U.toULong(), footer.vbMetaSize)
-            assertEquals(28983296U.toULong(), footer.vbMetaOffset)
-            assertEquals(28983296U.toULong(), footer.originalImageSize)
+            assertEquals(1, footer.versionMajor)
+            assertEquals(0, footer.versionMinor)
+            assertEquals(512, footer.vbMetaSize)
+            assertEquals(28983296, footer.vbMetaOffset)
+            assertEquals(28983296, footer.originalImageSize)
         }
     }
 
@@ -32,6 +44,7 @@ class FooterTest {
                 Footer(it)
                 assertEquals("Should never reach here", true, false)
             } catch (e: IllegalArgumentException) {
+                //expected
             }
         }
     }

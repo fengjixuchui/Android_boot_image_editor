@@ -1,22 +1,26 @@
-# layout of boot.img
+# layout of [vendor\_]boot.img
 
-### Image Content Index
+[1. boot.img v0-v2](#1-bootimg-v0-v2)
 
-[1 header part](#1-header-part)
+[2. boot.img v3-v4](#2-bootimg-v3-v4)
 
-[2 data part](#2-data-part)
+[3. vendor_boot.img v3-v4](#3-vendor_bootimg-v3-v4)
 
-[3 signature part](#3-signature-part)
+[4. signature part](#4-signature-part)
 
- - [3.1 Boot Image Signature](#31-boot-image-signature-vboot-10)
+ - [4.1 Boot Image Signature](#41-boot-image-signature-vboot-10)
 
- - [3.2 AVB Footer](#32-avb-footer-vboot-20)
+ - [4.2 AVB Footer](#42-avb-footer-vboot-20)
 
-### 1. header part
+[5. boot in memory](#5-boot-in-memory)
+
+## 1. boot.img v0-v2
+### header
+Value at 0x28 is one of {0x00,0x01,0x02,0x03,0x04}, this filed should be read first to identify header version.
 
               item                        size in bytes             position
     +-----------------------------------------------------------+    --> 0
-    |<MAGIC HEADER>                  |     8                    |
+    |<MAGIC HEADER>                  |     8 (value=ANDROID!)   |
     |--------------------------------+--------------------------|    --> 8
     |<kernel length>                 |     4                    |
     |--------------------------------+--------------------------|    --> 12
@@ -33,7 +37,7 @@
     |<tags offset>                   |     4                    |
     |--------------------------------+--------------------------|    --> 36
     |<page size>                     |     4                    |
-    |--------------------------------+--------------------------|    --> 40
+    |--------------------------------+--------------------------|    --> 40 (0x28)
     |<header version>                |     4 (value in [0,1,2]) |
     |--------------------------------+--------------------------|    --> 44
     |<os version & os patch level>   |     4                    |
@@ -46,9 +50,9 @@
     |--------------------------------+--------------------------|    --> 608 (0x260)
     |<cmdline part 2>                |     1024                 |
     |--------------------------------+--------------------------|    --> 1632 (0x660)
-    |<dtbo length>            [v1]   |     4                    |
+    |<recovery dtbo length>   [v1]   |     4                    |
     |--------------------------------+--------------------------|    --> 1636
-    |<dtbo offset>            [v1]   |     8                    |
+    |<recovery dtbo offset>   [v1]   |     8                    |
     |--------------------------------+--------------------------|    --> 1644
     |<header size>            [v1]   |     4 (v1: value=1648)   |
     |                                |       (v2: value=1660)   |
@@ -61,7 +65,7 @@
     |                                |           - header_size) |
     +--------------------------------+--------------------------+    --> pagesize
 
-### 2. data part
+### data
 
     +-----------------------------------------------------------+    --> pagesize
     |<kernel>                        |   kernel length          |
@@ -93,9 +97,125 @@
     |<padding>                [v2]   | min(n * page_size - len) |
     +-----------------------------------------------------------+    --> end of data part
 
-### 3. signature part
+## 2. boot.img v3-v4
 
-#### 3.1 Boot Image Signature (VBoot 1.0)
+For partitions: `/boot` and `/init_boot`.
+
+### header
+
+              item                        size in bytes             position
+    +-----------------------------------------------------------+    --> 0
+    |<MAGIC HEADER>                  |     8 (value=ANDROID!)   |
+    |--------------------------------+--------------------------|    --> 8
+    |<kernel size>                   |     4                    |
+    |--------------------------------+--------------------------|    --> 12
+    |<ramdisk size>                  |     4                    |
+    |--------------------------------+--------------------------|    --> 16
+    |<os version & os patch level>   |     4                    |
+    |--------------------------------+--------------------------|    --> 20
+    |<header size>                   |     4                    |
+    |--------------------------------+--------------------------|    --> 24
+    |<reserved>                      |     4 * 4                |
+    |--------------------------------+--------------------------|    --> 40 (0x28)
+    |<header version>                |     4 (value in [3|4])   |
+    |--------------------------------+--------------------------|    --> 44
+    |<cmdline>                       |     1024+512=1536        |
+    |--------------------------------+--------------------------|    --> 1580
+    |<signature_size>   (v4 only)    |     4                    |
+    |--------------------------------+--------------------------|    --> 1584
+    |<padding>                       | min(n * page_size        |
+    |                                |           - header_size) |
+    +--------------------------------+--------------------------+    --> pagesize=4096
+
+### data
+
+    +-----------------------------------------------------------+    --> pagesize
+    |<kernel>                        |   kernel length          |
+    +-----------------------------------------------------------+
+    |<ramdisk>                       |   ramdisk length         |
+    +-----------------------------------------------------------+
+    |<boot signature>   (v4 only)    |   boot signature length  |
+    +--------------------------------+--------------------------+
+    |<padding>                       | min(n * page_size - len) |
+    +-----------------------------------------------------------+
+
+## 3. vendor\_boot.img v3-v4
+
+For partitions: `/vendor_boot`.
+
+### header
+
+              item                        size in bytes             position
+    +-----------------------------------------------------------+    --> 0
+    |<MAGIC HEADER>                  |     8 (vaue=VNDRBOOT)    |
+    |--------------------------------+--------------------------|    --> 8
+    |<header version>                |     4 (value=3)          |
+    |--------------------------------+--------------------------|    --> 12
+    |<page size>                     |     4                    |
+    |--------------------------------+--------------------------|    --> 16
+    |<kernel load addr>              |     4                    |
+    |--------------------------------+--------------------------|    --> 20
+    |<ramdisk load addr>             |     4                    |
+    |--------------------------------+--------------------------|    --> 24
+    |<vendor ramdisk total size>     |     4                    |
+    |--------------------------------+--------------------------|    --> 28
+    |<vendor cmdline>                |     2048                 |
+    |--------------------------------+--------------------------|    --> 2076
+    |<tags offset>                   |     4                    |
+    |--------------------------------+--------------------------|    --> 2080
+    |<board name>                    |     16                   |
+    |--------------------------------+--------------------------|    --> 2096
+    |<header size>                   |     4 (v3: value=2112)   |
+    |                                |     4 (v4: value=2128)   |
+    |--------------------------------+--------------------------|    --> 2100
+    |<dtb size>                      |     4                    |
+    |--------------------------------+--------------------------|    --> 2104
+    |<dtb load addr>                 |     8                    |
+    |--------------------------------+--------------------------|    --> 2112
+    |<vendor ramdisk table size>     |     4   (v4 only)        |
+    |--------------------------------+--------------------------|    --> 2116
+    |<vendor ramdisk table entry num>|     4   (v4 only)        |
+    |--------------------------------+--------------------------|    --> 2120
+    |<vendor ramdisk table entry size|     4   (v4 only)        |
+    |--------------------------------+--------------------------|    --> 2124
+    |<bootconfig size>               |     4   (v4 only)        |
+    |--------------------------------+--------------------------|    --> 2128
+    |<padding>                       | min(n * page_size        |
+    |                                |           - header_size) |
+    +--------------------------------+--------------------------+    --> pagesize
+
+### data
+
+
+    +------------------+-------------+--------------------------+    --> pagesize
+    |                  | ramdisk 1   |                          |
+    |                  |-------------+                          |
+    |                  | ramdisk 2   |                          |
+    |<vendor ramdisks> |-------------+   padded len             |
+    |                  | ramdisk n   |                          |
+    |                  |-------------+                          |    --> pagesize + vendor_ramdisk_total_size
+    |                  | padding     |                          |
+    +------------------+-------------+--------------------------+    --> pagesize + vendor_ramdisk_total_size + padding
+    |                  |   dtb       |                          |
+    |<dtb>             |-------------+   padded len             |
+    |                  | padding     |                          |
+    +------------------+-------------+--------------------------+    --> dtb offset + dtb size + padding
+    |<vendor ramdisk > | entry 1     |                          |
+    |     table>       |-------------+                          |
+    |                  | entry 2     |   padded len             |
+    |                  |-------------+                          |
+    |                  | entry n     |                          |
+    |      (v4)        |-------------+                          |
+    |                  | padding     |                          |
+    +------------------+----------------------------------------+    --> vrt offset + vrt size + padding
+    |<bootconfig>            (v4)    |   padded len             |
+    +--------------------------------+--------------------------+
+
+
+
+## 4. signature part
+
+### 4.1 Boot Image Signature (VBoot 1.0)
 
     +--------------------------------+--------------------------+    --> end of data part
     |<signature>                     | signature length         |
@@ -103,7 +223,7 @@
     |<padding>                       | defined by boot_signer   |
     +--------------------------------+--------------------------+
 
-#### 3.2 AVB Footer (VBoot 2.0)
+### 4.2 AVB Footer (VBoot 2.0)
 
                          item                        size in bytes             position
     +------+--------------------------------+-------------------------+ --> end of data part (say locaton +0)
@@ -112,7 +232,7 @@
     |      |   - Header Magic "AVB0"        |     4                   |
     |      |   - avb_version Major          |     4                   |
     |      |   - avb_version Minor          |     4                   |
-    |      |   - authentication blob size   |     8                   |
+    |      |   - authentication_blob_size   |     8                   |
     |      |   - auxiliary blob size        |     8                   |
     |      |   - algorithm type             |     4                   |
     |      |   - hash_offset                |     8                   |
@@ -133,14 +253,14 @@
     |      |   - RESERVED                   |     80                  |
     |      |--------------------------------+-------------------------+ --> + 256
     |      | Authentication Blob            |                         |
-    |      |   - Hash of Header & Aux Blob  | alg.hash_num_bytes      |
-    |      |   - Signature of Hash          | alg.signature_num_bytes |
+    |      |   - Hash of Header & Aux Blob  | alg.hash_num_bytes      | --> + 256 + hash_offset
+    |      |   - Signature of Hash          | alg.signature_num_bytes | --> + 256 + signature_offset
     |      |   - Padding                    | align by 64             |
     |      +--------------------------------+-------------------------+
     |      | Auxiliary Blob                 |                         |
-    |      |   - descriptors                |                         | --> + 256 + descriptors_offset
-    |      |   - pub key                    |                         | --> + 256 + pub_key_offset
-    |      |   - pub key meta data          |                         | --> + 256 + pub_key_metadata_offset
+    |      |   - descriptors                |                         | --> + 256 + authentication_blob_size + descriptors_offset
+    |      |   - pub key                    |                         | --> + 256 + authentication_blob_size + pub_key_offset
+    |      |   - pub key meta data          |                         | --> + 256 + authentication_blob_size + pub_key_metadata_offset
     |      |   - padding                    | align by 64             |
     |      +--------------------------------+-------------------------+
     |      | Padding                        | align by block_size     |
@@ -152,7 +272,7 @@
     | DONOT CARE CHUNK                      |                         |
     |                                       |                         |
     |                                       |                         |
-    +--------------------------------------- -------------------------+
+    +---------------------------------------+-------------------------+
 
     +---------------------------------------+-------------------------+ --> partition_size - block_size
     | Padding                               | block_size - 64         |
@@ -167,3 +287,29 @@
     |   - VBMeta size                       |     8                   |
     |   - Padding                           |     28                  |
     +---------------------------------------+-------------------------+ --> partition_size
+
+## 5. boot in memory
+
+```
+       ┌────────────────────────────────────────┐
+       │           kernel                       │
+       ├──────────────────┬─────────────────────┤
+       │                  │ vendor ramdisk 1    │
+       │                  ├─────────────────────┤
+       │                  │ vendor ramdisk 2    │
+       │  vendor ramdisks ├─────────────────────┤
+       │                  │   ...               │
+       │                  ├─────────────────────┤
+       │                  │ vendor ramdisk n    │
+       ├──────────────────┴─────────────────────┤
+       │  generic ramdisk (from init_boot/boot) │
+       ├──────────────────┬─────────────────────┤
+       │                  │parameters           │
+       │                  ├─────────────────────┤
+       │                  │param size  (4)      │
+       │   bootconfig     ├─────────────────────┤
+       │                  │param checksum (4)   │
+       │                  ├─────────────────────┤
+       │                  │bootconfig magic(12) │ --> "#BOOTCONFIG\n"
+       └──────────────────┴─────────────────────┘
+```
